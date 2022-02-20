@@ -12,8 +12,15 @@ struct Pin {
     t: Vec<String>,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn fetch_pins() -> Result<Vec<Pin>, Box<dyn std::error::Error>> {
+    let pins = reqwest::get(PINBOARD_POPULAR_ENDPOINT)
+        .await?
+        .json::<Vec<Pin>>()
+        .await?;
+    Ok(pins)
+}
+
+fn to_storage(pins: &Vec<Pin>) -> Result<(), Box<dyn std::error::Error>> {
     let mut conn = Connection::open("pins.db")?;
 
     conn.execute(
@@ -30,11 +37,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         [],
     )?;
 
-    let pins = reqwest::get(PINBOARD_POPULAR_ENDPOINT)
-        .await?
-        .json::<Vec<Pin>>()
-        .await?;
-
     let tx = conn.transaction()?;
     for pin in pins.iter() {
         // Pinboard returns something like "t":[""]
@@ -50,5 +52,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         )?;
     }
     tx.commit()?;
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let pins = fetch_pins().await?;
+
+    to_storage(&pins)?;
+
     Ok(())
 }
