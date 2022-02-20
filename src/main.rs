@@ -24,7 +24,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
              link text not null,
              description text,
              tags text,
-             sent integer
+             sent integer,
+             UNIQUE(author, link)
          )",
         [],
     )?;
@@ -44,7 +45,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .map(|t| ["#", t].join(""))
             .collect();
         tx.execute(
-            "INSERT INTO pins (title, author, link, description, tags) values (?1, ?2, ?3, ?4, ?5)",
+            "INSERT OR IGNORE INTO pins (title, author, link, description, tags) values (?1, ?2, ?3, ?4, ?5)",
             params![&pin.d, &pin.a, &pin.u, &pin.n, &tags.join(", ")],
         )?;
     }
