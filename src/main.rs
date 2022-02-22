@@ -63,9 +63,14 @@ fn to_storage(pins: &Vec<Pin>) -> Result<(), Box<dyn std::error::Error>> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let pins = fetch_pins().await?;
+    let op = std::env::args().nth(1).expect("no operation given");
 
-    to_storage(&pins)?;
+    if op == "pull" {
+        let pins = fetch_pins().await?;
+        to_storage(&pins)?;
+    } else {
+        panic!("only support pull for now");
+    }
 
     Ok(())
 }
