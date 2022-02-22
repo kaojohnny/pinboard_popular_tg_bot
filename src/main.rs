@@ -16,10 +16,12 @@ struct Pin {
 }
 
 async fn fetch_pins() -> Result<Vec<Pin>, Box<dyn std::error::Error>> {
-    let pins = reqwest::get(PINBOARD_POPULAR_ENDPOINT)
+    let mut pins = reqwest::get(PINBOARD_POPULAR_ENDPOINT)
         .await?
         .json::<Vec<Pin>>()
         .await?;
+    // put the latest at the tail
+    pins.reverse();
     Ok(pins)
 }
 
@@ -42,7 +44,7 @@ fn to_storage(pins: &Vec<Pin>) -> Result<(), Box<dyn std::error::Error>> {
 
     let tx = conn.transaction()?;
     for pin in pins.iter() {
-        // Pinboard returns something like "t":[""]
+        // pinboard returns something like "t":[""]
         let tags: Vec<String> = pin
             .t
             .iter()
