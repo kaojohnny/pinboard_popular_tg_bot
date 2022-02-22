@@ -1,6 +1,9 @@
 use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
 
+#[macro_use]
+extern crate dotenv_codegen;
+
 const PINBOARD_POPULAR_ENDPOINT: &str = "http://feeds.pinboard.in/json/popular/";
 
 #[derive(Deserialize, Debug)]
@@ -21,7 +24,7 @@ async fn fetch_pins() -> Result<Vec<Pin>, Box<dyn std::error::Error>> {
 }
 
 fn to_storage(pins: &Vec<Pin>) -> Result<(), Box<dyn std::error::Error>> {
-    let mut conn = Connection::open("pins.db")?;
+    let mut conn = Connection::open(dotenv!("DB_FILE"))?;
 
     conn.execute(
         "create table if not exists pins (
