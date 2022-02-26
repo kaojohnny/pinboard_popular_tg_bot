@@ -32,15 +32,22 @@ async fn post_to_tg_channel(pin: Pin) -> Result<(), Box<dyn std::error::Error>> 
         dotenv!("TG_BOT_TOKEN")
     );
     let text = format!(
-        "{}\n{}\n{}\n{}",
+        "{}\n\n{}{}{}",
         pin.d,
         pin.u,
-        pin.n.unwrap(),
-        pin.t.join(", ")
+        match pin.n {
+            Some(n) => format!("\n\n{}", n),
+            None => "".to_string(),
+        },
+        if pin.t.len() > 0 {
+            format!("\n\n{}", pin.t.join(", "))
+        } else {
+            "".to_string()
+        }
     );
     client
         .get(path)
-        .query(&[("chat_id", dotenv!("TG_CHAT_ID")), ("text", &text)])
+        .query(&[("chat_id", dotenv!("TG_CHAT_ID")), ("text", &text.trim())])
         .send()
         .await?;
     Ok(())
