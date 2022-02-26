@@ -40,20 +40,24 @@ async fn post_to_tg_channel(pin: Pin) -> Result<(), Box<dyn std::error::Error>> 
     Ok(())
 }
 
-fn from_storage() -> Result<Pin, Box<dyn std::error::Error>> {
+fn from_storage() -> Result<(u32, Pin), Box<dyn std::error::Error>> {
     let conn = Connection::open(dotenv!("DB_FILE"))?;
 
     let mut stmt = conn
-        .prepare("SELECT title, author, link, description, tags  FROM 'pins' WHERE sent IS NULL ORDER BY id LIMIT 1")?;
+        .prepare("SELECT id, title, author, link, description, tags  FROM 'pins' WHERE sent IS NULL ORDER BY id LIMIT 1")?;
     let mut pins = stmt.query_map([], |row| {
-        let tags_string: String = row.get(4).unwrap();
-        Ok(Pin {
-            d: row.get(0)?,
-            a: row.get(1)?,
-            u: row.get(2)?,
-            n: row.get(3)?,
-            t: tags_string.split(',').map(|s| s.to_string()).collect(),
-        })
+        let tags_string: String = row.get(5).unwrap();
+        let id: u32 = row.get(0)?;
+        Ok((
+            id,
+            Pin {
+                d: row.get(1)?,
+                a: row.get(2)?,
+                u: row.get(3)?,
+                n: row.get(4)?,
+                t: tags_string.split(',').map(|s| s.to_string()).collect(),
+            },
+        ))
     })?;
 
     Ok(pins.nth(0).unwrap()?)
@@ -95,6 +99,13 @@ fn to_storage(pins: &Vec<Pin>) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+fn set_pin_sent_to_storage(id: u32) -> Result<(), Box<dyn std::error::Error>> {
+    let conn = Connection::open(dotenv!("DB_FILE"))?;
+    conn.execute("UPDATE pins SET sent = 1 WHERE id = ?", [id])?;
+
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let op = std::env::args().nth(1).expect("no operation given");
@@ -103,8 +114,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         let pins = fetch_pins().await?;
         to_storage(&pins)?;
     } else if op == "push" {
-        let p = from_storage()?;
-        post_to_tg_channel(p).await?;
+        let (id, pin) = from_storage()?;
+        post_to_tg_channel(pin).await?;
+        set_pin_sent_to_storage(id)?;
     } else {
         panic!("only support pull for now");
     }
