@@ -31,7 +31,13 @@ async fn post_to_tg_channel(pin: Pin) -> Result<(), Box<dyn std::error::Error>> 
         "https://api.telegram.org/bot{}/sendMessage",
         dotenv!("TG_BOT_TOKEN")
     );
-    let text = format!("{}\n{}\n{}", pin.d, pin.u, pin.t.join(", "));
+    let text = format!(
+        "{}\n{}\n{}\n{}",
+        pin.d,
+        pin.u,
+        pin.n.unwrap(),
+        pin.t.join(", ")
+    );
     client
         .get(path)
         .query(&[("chat_id", dotenv!("TG_CHAT_ID")), ("text", &text)])
