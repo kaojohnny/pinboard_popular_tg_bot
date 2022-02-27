@@ -1,5 +1,6 @@
 use rusqlite::{params, Connection, Result};
 use serde::Deserialize;
+use tokio_cron_scheduler::{Job, JobScheduler};
 
 #[macro_use]
 extern crate dotenv_codegen;
@@ -119,20 +120,60 @@ fn set_pin_sent_to_storage(id: u32) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let op = std::env::args().nth(1).expect("no operation given");
-
-    if op == "pull" {
-        let pins = fetch_pins().await?;
-        to_storage(&pins)?;
-    } else if op == "push" {
-        let (id, pin) = from_storage()?;
-        post_to_tg_channel(pin).await?;
-        set_pin_sent_to_storage(id)?;
-    } else {
-        panic!("only support pull for now");
-    }
+async fn handle_pull() -> Result<(), Box<dyn std::error::Error>> {
+    let pins = fetch_pins().await?;
+    to_storage(&pins)?;
 
     Ok(())
+}
+
+async fn handle_push() -> Result<(), Box<dyn std::error::Error>> {
+    let (id, pin) = from_storage()?;
+    println!("{:?}", pin);
+    post_to_tg_channel(pin).await?;
+    set_pin_sent_to_storage(id)?;
+
+    Ok(())
+}
+
+#[tokio::main]
+async fn main() {
+    let mut sched = JobScheduler::new();
+
+    // every 5 mins
+    sched
+        .add(
+            Job::new_async("0 0/15 * * * ? *", |_uuid, _l| {
+                Box::pin(async {
+                    handle_push().await.expect("handle_push failed");
+                })
+            })
+            .unwrap(),
+        )
+        .expect("Add to JobScheduler failed");
+
+    // every 6 hours and 1 min
+    sched
+        .add(
+            Job::new_async("0 27 0 * * ? *", |_uuid, _l| {
+                Box::pin(async {
+                    handle_pull().await.expect("handle_pull failed");
+                })
+            })
+            .unwrap(),
+        )
+        .expect("Add to JobScheduler failed");
+
+    #[cfg(feature = "signal")]
+    sched.shutdown_on_ctrl_c();
+
+    sched
+        .set_shutdown_handler(Box::new(|| {
+            Box::pin(async move {
+                println!("Shut down done");
+            })
+        }))
+        .expect("Set shutdown handler failed");
+
+    sched.start().await.expect("JobScheduler starts failed");
 }
