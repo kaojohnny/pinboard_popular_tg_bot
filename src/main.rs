@@ -129,7 +129,6 @@ async fn handle_pull() -> Result<(), Box<dyn std::error::Error>> {
 
 async fn handle_push() -> Result<(), Box<dyn std::error::Error>> {
     let (id, pin) = from_storage()?;
-    println!("{:?}", pin);
     post_to_tg_channel(pin).await?;
     set_pin_sent_to_storage(id)?;
 
@@ -140,7 +139,7 @@ async fn handle_push() -> Result<(), Box<dyn std::error::Error>> {
 async fn main() {
     let mut sched = JobScheduler::new();
 
-    // every 5 mins
+    // every 15 mins
     sched
         .add(
             Job::new_async("0 0/15 * * * ? *", |_uuid, _l| {
