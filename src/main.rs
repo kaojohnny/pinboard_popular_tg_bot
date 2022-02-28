@@ -37,8 +37,8 @@ async fn post_to_tg_channel(pin: Pin) -> Result<(), Box<dyn std::error::Error>> 
         pin.d,
         pin.u,
         match pin.n {
-            Some(n) => format!("\n\n{}", n),
-            None => "".to_string(),
+            Some(n) if !n.is_empty() => format!("\n\n{}", n),
+            _ => "".to_string(),
         },
         if pin.t.len() > 0 {
             format!("\n\n{}", pin.t.join(", "))
