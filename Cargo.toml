@@ -11,4 +11,3 @@ tokio = { version = "1", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
 rusqlite = "0.26.3"
 dotenv_codegen = "0.15.0"
-tokio-cron-scheduler = "*"
